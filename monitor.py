@@ -9,27 +9,41 @@ VARIANTS = ["Type-C with Mic", "STD with Mic", "PRO with Boom Mic"]
 NOTIFY_VARIANT = "STD with Mic"
 
 
-def send_email():
+def send_email(test=False):
     email_user = os.environ["EMAIL_USER"]
     email_app_password = os.environ["EMAIL_APP_PASSWORD"]
     email_to = os.environ["EMAIL_TO"]
 
     message = EmailMessage()
-    message["Subject"] = f"🔔 Tokopedia Ready Stock: {NOTIFY_VARIANT}"
+
+    if test:
+        message["Subject"] = "🧪 TEST - Tokopedia Stock Monitor"
+        message.set_content(
+            "Ini adalah email TEST dari Tokopedia Stock Monitor.\n\n"
+            "Jika email ini masuk, berarti konfigurasi EMAIL_USER, "
+            "EMAIL_APP_PASSWORD, EMAIL_TO, dan pengiriman SMTP Gmail "
+            "berfungsi dengan baik."
+        )
+    else:
+        message["Subject"] = f"🔔 Tokopedia Ready Stock: {NOTIFY_VARIANT}"
+        message.set_content(
+            f"Varian {NOTIFY_VARIANT} pada produk Kinera Celest Wyvern BLACK EDITION "
+            "terdeteksi tersedia.\n\n"
+            f"Link produk:\n{PRODUCT_URL}\n\n"
+            "Segera cek Tokopedia karena stok dapat berubah."
+        )
+
     message["From"] = email_user
     message["To"] = email_to
-    message.set_content(
-        f"Varian {NOTIFY_VARIANT} pada produk Kinera Celest Wyvern BLACK EDITION "
-        "terdeteksi tersedia.\n\n"
-        f"Link produk:\n{PRODUCT_URL}\n\n"
-        "Segera cek Tokopedia karena stok dapat berubah."
-    )
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(email_user, email_app_password)
         smtp.send_message(message)
 
-    print("📧 Email notifikasi berhasil dikirim.")
+    if test:
+        print("🧪 Email TEST berhasil dikirim.")
+    else:
+        print("📧 Email notifikasi berhasil dikirim.")
 
 
 def check_stock():
@@ -113,4 +127,7 @@ def check_stock():
 
 
 if __name__ == "__main__":
-    check_stock()
+    if os.getenv("TEST_EMAIL", "").lower() == "true":
+        send_email(test=True)
+    else:
+        check_stock()
