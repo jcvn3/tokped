@@ -5,7 +5,7 @@ from email.message import EmailMessage
 from playwright.sync_api import sync_playwright
 
 PRODUCT_URL = "https://www.tokopedia.com/bassaudiobdg/kinera-celest-wyvern-black-edition-10mm-dynamic-driver-in-ear-monitor-earphones-with-mic-1731753518101660852"
-TARGET_VARIANT = "STD with Mic"  # monitored variant
+TARGET_VARIANT = "STD with Mic"
 
 
 def send_email():
@@ -33,41 +33,25 @@ def send_email():
 
 def check_stock():
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                "--disable-http2",
-                "--disable-blink-features=AutomationControlled",
-            ],
-        )
+        browser = p.firefox.launch(headless=True)
 
         try:
             page = browser.new_page(
                 viewport={"width": 1366, "height": 768},
                 locale="id-ID",
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/140.0.0.0 Safari/537.36"
-                ),
             )
 
-            print("Membuka halaman Tokopedia...")
+            print("Membuka halaman Tokopedia dengan Firefox...")
             page.goto(
                 PRODUCT_URL,
                 wait_until="domcontentloaded",
-                timeout=60000
+                timeout=60000,
             )
 
-            # Tunggu halaman selesai memuat dan elemen varian muncul.
             page.wait_for_timeout(5000)
-
             print("Halaman:", page.title())
 
-            variant = page.get_by_text(
-                TARGET_VARIANT,
-                exact=True
-            ).first
+            variant = page.get_by_text(TARGET_VARIANT, exact=True).first
 
             if variant.count() == 0:
                 raise RuntimeError(
