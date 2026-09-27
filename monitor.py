@@ -1,4 +1,5 @@
 import os
+import re
 import smtplib
 from email.message import EmailMessage
 
@@ -9,7 +10,7 @@ VARIANTS = ["Type-C with Mic", "STD with Mic", "PRO with Boom Mic"]
 NOTIFY_VARIANT = "STD with Mic"
 
 
-def send_email(test=False):
+def send_email(stock=None, test=False):
     email_user = os.environ["EMAIL_USER"]
     email_app_password = os.environ["EMAIL_APP_PASSWORD"]
     email_to = os.environ["EMAIL_TO"]
@@ -25,10 +26,12 @@ def send_email(test=False):
             "berfungsi dengan baik."
         )
     else:
+        stock_text = f"{stock} pcs" if stock is not None else "jumlah tidak terdeteksi"
         message["Subject"] = f"🔔 Tokopedia Ready Stock: {NOTIFY_VARIANT}"
         message.set_content(
             f"Varian {NOTIFY_VARIANT} pada produk Kinera Celest Wyvern BLACK EDITION "
             "terdeteksi tersedia.\n\n"
+            f"Perkiraan stok yang terdeteksi: {stock_text}\n\n"
             f"Link produk:\n{PRODUCT_URL}\n\n"
             "Segera cek Tokopedia karena stok dapat berubah."
         )
@@ -44,6 +47,23 @@ def send_email(test=False):
         print("🧪 Email TEST berhasil dikirim.")
     else:
         print("📧 Email notifikasi berhasil dikirim.")
+
+
+def get_stock_from_page(body_text):
+    # Tokopedia dapat menampilkan jumlah stok seperti "Stok: 3".
+    # Jika tidak ada angka, kembalikan None.
+    patterns = [
+        r"Stok\s*:\s*(\d+)\b",
+        r"Stok\s+tersisa\s*(\d+)\b",
+        r"tersisa\s*(\d+)\s*(?:buah|pcs|produk)?",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, body_text, re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+
+    return None
 
 
 def check_stock():
@@ -83,7 +103,10 @@ def check_stock():
                 ).first
 
                 if variant.count() == 0:
-                    results[variant_name] = "VARIAN TIDAK DITEMUKAN"
+                    results[variant_name] = {
+                        "status": "VARIAN TIDAK DITEMUKAN",
+                        "stock": None,
+                    }
                     print(f"⚠️ {variant_name}: tidak ditemukan")
                     continue
 
@@ -91,18 +114,31 @@ def check_stock():
                 page.wait_for_timeout(1500)
 
                 body_text = page.locator("body").inner_text()
+                stock = get_stock_from_page(body_text)
                 is_sold_out = any(
                     message in body_text
                     for message in sold_out_messages
                 )
 
-                results[variant_name] = (
-                    "STOK HABIS" if is_sold_out else "TERSEDIA"
-                )
+                if is_sold_out:
+                    status = "STOK HABIS"
+                    stock = 0
+                elif stock is not None:
+                    status = "TERSEDIA"
+                else:
+                    status = "TERSEDIA"
+
+                results[variant_name] = {
+                    "status": status,
+                    "stock": stock,
+                }
 
             print("\n===== HASIL PEMERIKSAAN =====")
 
-            for variant_name, status in results.items():
+            for variant_name, result in results.items():
+                status = result["status"]
+                stock = result["stock"]
+
                 if status == "STOK HABIS":
                     icon = "❌"
                 elif status == "TERSEDIA":
@@ -110,10 +146,17 @@ def check_stock():
                 else:
                     icon = "⚠️"
 
-                print(f"{icon} {variant_name}: {status}")
+                stock_text = (
+                    f" | stok: {stock} pcs"
+                    if stock is not None
+                    else " | stok: tidak terdeteksi"
+                )
+                print(f"{icon} {variant_name}: {status}{stock_text}")
 
-            if results.get(NOTIFY_VARIANT) == "TERSEDIA":
-                send_email()
+            notify_result = results.get(NOTIFY_VARIANT, {})
+
+            if notify_result.get("status") == "TERSEDIA":
+                send_email(stock=notify_result.get("stock"))
             else:
                 print(
                     f"📧 Email tidak dikirim karena "
