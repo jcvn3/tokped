@@ -33,12 +33,23 @@ def send_email():
 
 def check_stock():
     with sync_playwright() as p:
-        browser = p.chromium.launch(\n            headless=True,\n            args=["--disable-http2", "--disable-blink-features=AutomationControlled"],\n        )
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-http2",
+                "--disable-blink-features=AutomationControlled",
+            ],
+        )
 
         try:
             page = browser.new_page(
                 viewport={"width": 1366, "height": 768},
-                locale="id-ID"
+                locale="id-ID",
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/140.0.0.0 Safari/537.36"
+                ),
             )
 
             print("Membuka halaman Tokopedia...")
