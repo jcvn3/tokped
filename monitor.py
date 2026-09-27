@@ -15,11 +15,11 @@ def send_email():
     email_to = os.environ["EMAIL_TO"]
 
     message = EmailMessage()
-    message["Subject"] = f"🔔 Tokopedia Ready Stock: {TARGET_VARIANT}"
+    message["Subject"] = f"🔔 Tokopedia Ready Stock: {NOTIFY_VARIANT}"
     message["From"] = email_user
     message["To"] = email_to
     message.set_content(
-        f"Varian {TARGET_VARIANT} pada produk Kinera Celest Wyvern BLACK EDITION "
+        f"Varian {NOTIFY_VARIANT} pada produk Kinera Celest Wyvern BLACK EDITION "
         "terdeteksi tersedia.\n\n"
         f"Link produk:\n{PRODUCT_URL}\n\n"
         "Segera cek Tokopedia karena stok dapat berubah."
@@ -52,36 +52,59 @@ def check_stock():
             page.wait_for_timeout(5000)
             print("Halaman:", page.title())
 
-            variant = page.get_by_text(TARGET_VARIANT, exact=True).first
-
-            if variant.count() == 0:
-                raise RuntimeError(
-                    f"Varian '{TARGET_VARIANT}' tidak ditemukan."
-                )
-
-            print(f"Memilih varian: {TARGET_VARIANT}")
-            variant.click()
-            page.wait_for_timeout(2000)
-
-            body_text = page.locator("body").inner_text()
-
-            print("\n===== HASIL PEMERIKSAAN =====")
-
             sold_out_messages = [
                 "Stok: Habis",
                 "Stok varian ini habis",
                 "Stok Habis",
             ]
 
-            is_sold_out = any(
-                message in body_text for message in sold_out_messages
-            )
+            results = {}
 
-            if is_sold_out:
-                print(f"❌ {TARGET_VARIANT}: STOK HABIS")
-            else:
-                print(f"✅ {TARGET_VARIANT}: TERSEDIA")
+            for variant_name in VARIANTS:
+                print(f"Memilih varian: {variant_name}")
+
+                variant = page.get_by_text(
+                    variant_name,
+                    exact=True,
+                ).first
+
+                if variant.count() == 0:
+                    results[variant_name] = "VARIAN TIDAK DITEMUKAN"
+                    print(f"⚠️ {variant_name}: tidak ditemukan")
+                    continue
+
+                variant.click()
+                page.wait_for_timeout(1500)
+
+                body_text = page.locator("body").inner_text()
+                is_sold_out = any(
+                    message in body_text
+                    for message in sold_out_messages
+                )
+
+                results[variant_name] = (
+                    "STOK HABIS" if is_sold_out else "TERSEDIA"
+                )
+
+            print("\n===== HASIL PEMERIKSAAN =====")
+
+            for variant_name, status in results.items():
+                if status == "STOK HABIS":
+                    icon = "❌"
+                elif status == "TERSEDIA":
+                    icon = "✅"
+                else:
+                    icon = "⚠️"
+
+                print(f"{icon} {variant_name}: {status}")
+
+            if results.get(NOTIFY_VARIANT) == "TERSEDIA":
                 send_email()
+            else:
+                print(
+                    f"📧 Email tidak dikirim karena "
+                    f"{NOTIFY_VARIANT} belum tersedia."
+                )
 
             print("=============================\n")
 
