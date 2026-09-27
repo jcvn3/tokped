@@ -2,6 +2,15 @@ name: Tokopedia Stock Monitor
 
 on:
   workflow_dispatch:
+    inputs:
+      test_email:
+        description: "Kirim email test tanpa mengecek stok"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
   push:
     branches:
       - main
@@ -32,4 +41,5 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          TEST_EMAIL: ${{ github.event.inputs.test_email || 'false' }}
         run: python monitor.py
