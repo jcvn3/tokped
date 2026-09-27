@@ -33,7 +33,7 @@ def send_email():
 
 def check_stock():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(\n            headless=True,\n            args=["--disable-http2", "--disable-blink-features=AutomationControlled"],\n        )
 
         try:
             page = browser.new_page(
