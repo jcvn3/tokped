@@ -5,7 +5,8 @@ from email.message import EmailMessage
 from playwright.sync_api import sync_playwright
 
 PRODUCT_URL = "https://www.tokopedia.com/bassaudiobdg/kinera-celest-wyvern-black-edition-10mm-dynamic-driver-in-ear-monitor-earphones-with-mic-1731753518101660852"
-TARGET_VARIANT = "STD with Mic"
+VARIANTS = ["Type-C with Mic", "STD with Mic", "PRO with Boom Mic"]
+NOTIFY_VARIANT = "STD with Mic"
 
 
 def send_email():
